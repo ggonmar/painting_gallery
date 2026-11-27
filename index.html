@@ -214,27 +214,31 @@
     </div>
 
     <div class="modal" id="editModal" role="dialog" aria-modal="true" aria-labelledby="editTitle">
-        <div class="modal-card" style="width: min(620px, 100%);">
-            <button class="modal-close" onclick="closeEdit()" aria-label="Cerrar">&times;</button>
-            <h2 id="editTitle">✏️ Editar cuadro</h2>
-            <form class="auth-form" id="editForm">
-                <label class="edit-field"><span>Título</span><input type="text" id="editFieldTitle" maxlength="300" required></label>
-                <label class="edit-field"><span>Título original</span><input type="text" id="editFieldOriginalTitle" maxlength="300"></label>
-                <div class="edit-row">
-                    <label class="edit-field"><span>Artista</span><input type="text" id="editFieldArtist" maxlength="200"></label>
-                    <label class="edit-field"><span>Año</span><input type="text" id="editFieldYear" maxlength="20"></label>
+        <div class="modal-card edit-card">
+            <div class="edit-head">
+                <button class="modal-close" onclick="closeEdit()" aria-label="Cerrar">&times;</button>
+                <h2 id="editTitle">✏️ Editar cuadro</h2>
+                <div class="edit-main-tabs" role="tablist">
+                    <button type="button" class="edit-main-tab" data-pane="general" role="tab" onclick="showEditPane('general')"><span class="tab-icon">📝</span> General</button>
+                    <button type="button" class="edit-main-tab" data-pane="image" role="tab" onclick="showEditPane('image')"><span class="tab-icon">🖼️</span> Imagen</button>
+                    <button type="button" class="edit-main-tab" data-pane="description" role="tab" onclick="showEditPane('description')"><span class="tab-icon">📋</span> Descripción</button>
+                    <button type="button" class="edit-main-tab" data-pane="advanced" role="tab" onclick="showEditPane('advanced')"><span class="tab-icon">⚙️</span> Avanzado</button>
                 </div>
-                <label class="edit-field"><span>Ubicación (museo, ciudad)</span><input type="text" id="editFieldLocation" maxlength="300" placeholder="p. ej. National Gallery of Armenia, Yerevan"></label>
-                <div id="editTags" class="edit-tags"></div>
-                <label class="edit-check"><input type="checkbox" id="editFieldPending"> ⏳ Pendiente de revisión (solo lo ven quienes pueden subir cuadros)</label>
-                <label class="edit-check"><input type="checkbox" id="editFieldConfirmed"> ✔️ Datos confirmados (el motor no volverá a renombrarlo ni a reidentificarlo)</label>
-                <div class="auth-error" id="editError"></div>
-                <button type="submit" id="editSubmit">Guardar cambios</button>
-            </form>
+            </div>
 
-            <div class="edit-section">
-                <h3>🖼️ Sustituir la imagen</h3>
-                <form class="auth-form" id="editImageForm">
+            <form class="edit-body" id="editForm" novalidate>
+                <div class="edit-pane auth-form" data-pane="general" role="tabpanel">
+                    <label class="edit-field"><span>Título</span><input type="text" id="editFieldTitle" maxlength="300"></label>
+                    <label class="edit-field"><span>Título original</span><input type="text" id="editFieldOriginalTitle" maxlength="300"></label>
+                    <div class="edit-row">
+                        <label class="edit-field"><span>Artista</span><input type="text" id="editFieldArtist" maxlength="200"></label>
+                        <label class="edit-field"><span>Año</span><input type="text" id="editFieldYear" maxlength="20"></label>
+                    </div>
+                    <label class="edit-field"><span>Ubicación (museo, ciudad)</span><input type="text" id="editFieldLocation" maxlength="300" placeholder="p. ej. National Gallery of Armenia, Yerevan"></label>
+                    <div id="editTags" class="edit-tags"></div>
+                </div>
+
+                <div class="edit-pane auth-form" data-pane="image" role="tabpanel" hidden>
                     <div class="edit-status" id="editImageCurrent"></div>
                     <div class="dropzone dropzone-compact" id="editImageDrop" tabindex="0" role="button" aria-label="Elegir la nueva imagen">
                         <strong>Arrastra aquí la nueva imagen</strong><br>
@@ -242,60 +246,69 @@
                     </div>
                     <input type="file" id="editImageFile" accept="image/*" hidden>
                     <div class="edit-image-preview" id="editImagePreview"></div>
-                    <button type="submit" id="editImageSubmit" disabled>Sustituir imagen</button>
                     <div class="edit-status" id="editImageStatus"></div>
-                </form>
-            </div>
-
-            <div class="edit-section">
-                <h3>📋 Descripción</h3>
-                <div class="edit-tabs" role="tablist">
-                    <button type="button" class="edit-tab" data-tab="versions" role="tab" onclick="showEditTab('versions')">📚 Versiones</button>
-                    <button type="button" class="edit-tab" data-tab="own" role="tab" onclick="showEditTab('own')">📝 Escribir una nueva</button>
-                    <button type="button" class="edit-tab" data-tab="ai" role="tab" onclick="showEditTab('ai')">🤖 Pedir a una IA</button>
                 </div>
-                <div class="edit-tab-panel" data-panel="versions">
-                <div class="edit-versions" id="editVersions">
-                    <select id="editVersionSelect" onchange="showEditVersion()"></select>
-                    <div class="edit-version" id="editVersionBox">
-                        <div class="edit-version-head" id="editVersionHead"></div>
-                        <textarea id="editVersionText" rows="8" maxlength="50000"></textarea>
-                        <div class="edit-version-actions">
-                            <span class="auth-error" id="editVersionError"></span>
-                            <button type="button" class="btn-small" id="editVersionSave" disabled onclick="saveVersion()">💾 Guardar cambios</button>
-                            <button type="button" class="btn-small danger-outline" id="editVersionDelete" onclick="deleteVersion()">🗑️ Borrar versión</button>
+
+                <div class="edit-pane" data-pane="description" role="tabpanel" hidden>
+                    <div class="edit-tabs" role="tablist">
+                        <button type="button" class="edit-tab" data-tab="versions" role="tab" onclick="showEditTab('versions')">📚 Versiones</button>
+                        <button type="button" class="edit-tab" data-tab="own" role="tab" onclick="showEditTab('own')">📝 Escribir una nueva</button>
+                        <button type="button" class="edit-tab" data-tab="ai" role="tab" onclick="showEditTab('ai')">🤖 Pedir a una IA</button>
+                    </div>
+                    <div class="edit-tab-panel" data-panel="versions">
+                        <div class="edit-versions" id="editVersions">
+                            <select id="editVersionSelect" onchange="showEditVersion()"></select>
+                            <div class="edit-version" id="editVersionBox">
+                                <div class="edit-version-head" id="editVersionHead"></div>
+                                <textarea id="editVersionText" rows="10" maxlength="50000"></textarea>
+                                <div class="edit-version-actions">
+                                    <span class="edit-status" id="editVersionNote"></span>
+                                    <button type="button" class="btn-small danger-outline" id="editVersionDelete" onclick="toggleDeleteVersion()">🗑️ Borrar versión</button>
+                                </div>
+                            </div>
+                            <p class="edit-status" id="editVersionsEmpty">Este cuadro todavía no tiene descripciones.</p>
                         </div>
                     </div>
-                    <p class="edit-status" id="editVersionsEmpty">Este cuadro todavía no tiene descripciones.</p>
+                    <div class="edit-tab-panel auth-form" data-panel="own" hidden>
+                        <textarea id="editDescText" rows="10" maxlength="20000" placeholder="Se añadirá al guardar como versión más reciente; las anteriores se conservan."></textarea>
+                    </div>
+                    <div class="edit-tab-panel auth-form" data-panel="ai" hidden>
+                        <select id="editAiProvider"></select>
+                        <input type="text" id="editAiStyle" maxlength="200" placeholder="Estilo">
+                        <input type="number" id="editAiLength" min="100" max="20000" step="50" placeholder="Longitud máxima (caracteres)">
+                        <button type="button" class="btn-primary" id="editAiSubmit" onclick="requestAiDescription()">Generar descripción</button>
+                        <div class="edit-status">La IA trabaja en segundo plano y añade la descripción en cuanto termina (no hace falta pulsar «Guardar»).</div>
+                        <div class="edit-status" id="editAiStatus"></div>
+                    </div>
                 </div>
-                </div>
-                <div class="edit-tab-panel" data-panel="own" hidden>
-                <form class="auth-form" id="editDescForm">
-                    <textarea id="editDescText" rows="5" maxlength="20000" placeholder="Se añadirá como versión más reciente; las anteriores se conservan."></textarea>
-                    <div class="auth-error" id="editDescError"></div>
-                    <button type="submit" id="editDescSubmit">Añadir descripción</button>
-                </form>
-                </div>
-                <div class="edit-tab-panel" data-panel="ai" hidden>
-                <form class="auth-form" id="editAiForm">
-                    <select id="editAiProvider"></select>
-                    <input type="text" id="editAiStyle" maxlength="200" placeholder="Estilo">
-                    <input type="number" id="editAiLength" min="100" max="20000" step="50" placeholder="Longitud máxima (caracteres)">
-                    <button type="submit" id="editAiSubmit">Generar descripción</button>
-                    <div class="edit-status" id="editAiStatus"></div>
-                </form>
-                </div>
-            </div>
 
-            <div class="edit-section danger-zone">
-                <h3>⚠️ Eliminar cuadro</h3>
-                <p>Se quita de la colección junto con todas sus descripciones y las marcas de visto/favorito de todos los usuarios.
-                   La imagen no se borra: se guarda en la papelera del servidor (<code>data/trash/</code>) por si hubiera que recuperarla.</p>
-                <label class="edit-field" style="margin-bottom: 10px;">
-                    <span>Para confirmar, escribe el título del cuadro: <strong id="editDeleteExpected" style="text-transform: none; color: #b02a37;"></strong></span>
-                    <input type="text" id="editDeleteConfirm" autocomplete="off" spellcheck="false" oninput="updateDeleteButton()">
-                </label>
-                <button type="button" class="danger-btn" id="editDeleteButton" disabled onclick="deletePainting()">🗑️ Eliminar cuadro</button>
+                <div class="edit-pane" data-pane="advanced" role="tabpanel" hidden>
+                    <div class="auth-form">
+                        <h3 class="edit-pane-title">Estado</h3>
+                        <label class="edit-check"><input type="checkbox" id="editFieldPending"> ⏳ Pendiente de revisión (solo lo ven quienes pueden subir cuadros)</label>
+                        <label class="edit-check"><input type="checkbox" id="editFieldConfirmed"> ✔️ Datos confirmados (el motor no volverá a renombrarlo ni a reidentificarlo)</label>
+                    </div>
+                    <div class="edit-section danger-zone">
+                        <h3>⚠️ Eliminar cuadro</h3>
+                        <p>Se quita de la colección junto con todas sus descripciones y las marcas de visto/favorito de todos los usuarios.
+                           La imagen no se borra: se guarda en la papelera del servidor (<code>data/trash/</code>) durante 30 días por si hubiera que recuperarla.
+                           Se elimina al momento, sin pulsar «Guardar».</p>
+                        <label class="edit-field" style="margin-bottom: 10px;">
+                            <span>Para confirmar, escribe el título del cuadro: <strong id="editDeleteExpected" style="text-transform: none; color: #b02a37;"></strong></span>
+                            <input type="text" id="editDeleteConfirm" autocomplete="off" spellcheck="false" oninput="updateDeleteButton()">
+                        </label>
+                        <button type="button" class="danger-btn" id="editDeleteButton" disabled onclick="deletePainting()">🗑️ Eliminar cuadro</button>
+                    </div>
+                </div>
+            </form>
+
+            <div class="edit-foot">
+                <div class="edit-foot-status">
+                    <span class="auth-error" id="editError"></span>
+                    <span class="edit-status" id="editPendingSummary"></span>
+                </div>
+                <button type="button" class="btn-ghost" onclick="closeEdit()">Cancelar</button>
+                <button type="submit" form="editForm" id="editSubmit">💾 Guardar</button>
             </div>
         </div>
     </div>

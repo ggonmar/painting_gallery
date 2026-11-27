@@ -2021,13 +2021,19 @@ async function openEdit(key) {
     document.getElementById('editFieldConfirmed').checked = !!painting.confirmed;
     document.getElementById('editFieldPending').checked = painting.status === 'pending';
     editTags = { periods: [...(painting.periods || [])], themes: [...(painting.themes || [])] };
+    editBaseline = editFieldValues();
+    versionEdits = new Map();
+    versionDeletes = new Set();
+    document.getElementById('editDescText').value = '';
     renderEditTags();
     resetReplaceImage();
     renderEditVersions();
     showEditTab(editVersions.length ? 'versions' : 'own');
+    showEditPane('general');
     resetDeleteConfirm();
-    ['editError', 'editDescError'].forEach(id => { document.getElementById(id).textContent = ''; });
+    document.getElementById('editError').textContent = '';
     if (!aiJobRunning) setAiStatus('');
+    updateEditDirty();
     editModal.classList.add('open');
 
     if (!aiOptions) {
@@ -2047,8 +2053,77 @@ async function openEdit(key) {
     document.getElementById('editAiSubmit').disabled = aiJobRunning || aiOptions.providers.length === 0;
 }
 
-function closeEdit() {
+// Main tabs. The card has a fixed size, so switching tabs never makes it jump
+function showEditPane(name) {
+    document.querySelectorAll('#editModal .edit-main-tab').forEach(tab => {
+        const active = tab.dataset.pane === name;
+        tab.classList.toggle('active', active);
+        tab.setAttribute('aria-selected', active);
+    });
+    document.querySelectorAll('#editModal .edit-pane').forEach(pane => {
+        pane.hidden = pane.dataset.pane !== name;
+    });
+    document.querySelector('#editModal .edit-body').scrollTop = 0;
+}
+
+// ---- Pending changes: everything is applied together with the single «Guardar» button ----
+let editBaseline = null;          // field values when the editor was opened (or last saved)
+let versionEdits = new Map();     // description_id -> edited text
+let versionDeletes = new Set();   // description_ids marked to be deleted
+
+function editFieldValues() {
+    const value = (id) => document.getElementById(id).value;
+    return {
+        title: value('editFieldTitle'),
+        original_title: value('editFieldOriginalTitle'),
+        artist: value('editFieldArtist'),
+        year: value('editFieldYear'),
+        location: value('editFieldLocation'),
+        periods: [...editTags.periods],
+        themes: [...editTags.themes],
+        confirmed: document.getElementById('editFieldConfirmed').checked,
+        pending: document.getElementById('editFieldPending').checked
+    };
+}
+
+function editDirtyState() {
+    if (!editBaseline) return { general: false, image: false, description: false, advanced: false };
+    const now = editFieldValues();
+    const same = (key) => JSON.stringify(Array.isArray(now[key]) ? [...now[key]].sort() : now[key])
+        === JSON.stringify(Array.isArray(editBaseline[key]) ? [...editBaseline[key]].sort() : editBaseline[key]);
+    return {
+        general: !['title', 'original_title', 'artist', 'year', 'location', 'periods', 'themes'].every(same),
+        image: editImageFile.files.length > 0,
+        description: versionEdits.size > 0 || versionDeletes.size > 0 || document.getElementById('editDescText').value.trim() !== '',
+        advanced: !['confirmed', 'pending'].every(same)
+    };
+}
+
+const EDIT_PANE_NAMES = { general: 'General', image: 'Imagen', description: 'Descripción', advanced: 'Avanzado' };
+
+function updateEditDirty() {
+    const dirty = editDirtyState();
+    const panes = Object.keys(dirty).filter(name => dirty[name]);
+    document.querySelectorAll('#editModal .edit-main-tab').forEach(tab => {
+        tab.classList.toggle('dirty', !!dirty[tab.dataset.pane]);
+    });
+    document.getElementById('editPendingSummary').textContent = panes.length
+        ? `Sin guardar: ${panes.map(name => EDIT_PANE_NAMES[name]).join(', ')}`
+        : 'No hay cambios';
+    document.getElementById('editSubmit').disabled = panes.length === 0;
+    return panes.length > 0;
+}
+
+editModal.addEventListener('input', updateEditDirty);
+editModal.addEventListener('change', updateEditDirty);
+
+function closeEdit(force = false) {
+    if (force !== true && editModal.classList.contains('open') && updateEditDirty()
+        && !confirm('Hay cambios sin guardar. ¿Cerrar y descartarlos?')) {
+        return;
+    }
     editModal.classList.remove('open');
+    editBaseline = null;
 }
 
 editModal.addEventListener('click', (e) => {
@@ -2066,62 +2141,90 @@ async function afterPaintingChange(message) {
     showToast(message);
 }
 
+async function uploadReplacementImage(key, file) {
+    const form = new FormData();
+    form.append('id', key);
+    form.append('image', file, file.name);
+    const response = await fetch('api/replace_image.php', { method: 'POST', headers: { 'X-Cuadros': '1' }, body: form });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data.error || `Error ${response.status}`);
+    return data;
+}
+
+// Applies the pending changes of every tab: image, data/tags/state, description versions and the new description
 document.getElementById('editForm').addEventListener('submit', async (e) => {
     e.preventDefault();
+    const dirty = editDirtyState();
+    if (!Object.values(dirty).some(Boolean)) return;
     const submit = document.getElementById('editSubmit');
     const errorEl = document.getElementById('editError');
-    const locationChanged = document.getElementById('editFieldLocation').value.trim() !== (editingPainting().location || '');
+    const key = editingKey;
+    const fields = editFieldValues();
+    if (!fields.title.trim()) {
+        showEditPane('general');
+        errorEl.textContent = 'El título no puede quedar vacío';
+        document.getElementById('editFieldTitle').focus();
+        return;
+    }
+    const locationChanged = fields.location.trim() !== (editingPainting().location || '');
+    const step = (text) => { submit.textContent = text; };
+    let saved = false;
+    let imageReplaced = false;
     submit.disabled = true;
-    submit.textContent = locationChanged ? 'Guardando y ubicando en el mapa…' : 'Guardando…';
     errorEl.textContent = '';
     try {
-        await api('api/painting.php', {
-            action: 'update',
-            id: editingKey,
-            fields: {
-                title: document.getElementById('editFieldTitle').value,
-                original_title: document.getElementById('editFieldOriginalTitle').value,
-                artist: document.getElementById('editFieldArtist').value,
-                year: document.getElementById('editFieldYear').value,
-                location: document.getElementById('editFieldLocation').value,
-                confirmed: document.getElementById('editFieldConfirmed').checked,
-                pending: document.getElementById('editFieldPending').checked,
-                periods: editTags.periods,
-                themes: editTags.themes
+        if (dirty.image) {
+            step('Subiendo la imagen…');
+            await uploadReplacementImage(key, editImageFile.files[0]);
+            imageReplaced = saved = true;
+            resetReplaceImage();
+        }
+        if (dirty.general || dirty.advanced) {
+            step(dirty.general && locationChanged ? 'Guardando y ubicando en el mapa…' : 'Guardando datos…');
+            await api('api/painting.php', { action: 'update', id: key, fields });
+            editBaseline = fields;
+            saved = true;
+        }
+        if (dirty.description) {
+            step('Guardando la descripción…');
+            for (const id of [...versionDeletes]) {
+                await api('api/painting.php', { action: 'delete_description', id: key, description_id: id });
+                versionDeletes.delete(id);
+                versionEdits.delete(id);
+                saved = true;
             }
-        });
-        closeEdit();
+            for (const [id, text] of [...versionEdits]) {
+                await api('api/painting.php', { action: 'update_description', id: key, description_id: id, text });
+                versionEdits.delete(id);
+                saved = true;
+            }
+            const newText = document.getElementById('editDescText');
+            if (newText.value.trim()) {
+                await api('api/painting.php', { action: 'add_description', id: key, text: newText.value });
+                newText.value = '';
+                saved = true;
+            }
+        }
+        closeEdit(true);
         await afterPaintingChange('💾 Cambios guardados');
-        const painting = editingPainting();
-        if (locationChanged && painting && painting.location) {
-            const geo = painting.geo;
-            if (!geo || geo.status !== 'ok') showToast('💾 Guardado, pero la nueva ubicación no se encontró en el mapa');
+        if (imageReplaced && viewerIndex !== null && paintingKey(paintings[viewerIndex]) === key) showInViewer(viewerIndex);
+        const painting = paintings.find(p => paintingKey(p) === key);
+        if (dirty.general && locationChanged && painting && painting.location && (!painting.geo || painting.geo.status !== 'ok')) {
+            showToast('💾 Guardado, pero la nueva ubicación no se encontró en el mapa');
         }
     } catch (error) {
-        errorEl.textContent = error.message;
+        errorEl.textContent = '⚠ ' + error.message + (saved ? ' (lo anterior sí se guardó)' : '');
+        if (saved) {
+            // Part of it was applied: reload so the editor shows the real state; what failed stays pending
+            try { await refreshLibrary(); } catch (ignored) { /* keep the error visible */ }
+            if (editingKey === key) {
+                renderEditVersions();
+                if (imageReplaced) { resetReplaceImage(); renderEditTags(); }
+            }
+        }
     } finally {
-        submit.disabled = false;
-        submit.textContent = 'Guardar cambios';
-    }
-});
-
-document.getElementById('editDescForm').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const textarea = document.getElementById('editDescText');
-    const submit = document.getElementById('editDescSubmit');
-    const errorEl = document.getElementById('editDescError');
-    submit.disabled = true;
-    errorEl.textContent = '';
-    try {
-        await api('api/painting.php', { action: 'add_description', id: editingKey, text: textarea.value });
-        textarea.value = '';
-        await afterPaintingChange('📝 Descripción añadida');
-        renderEditVersions();
-        showEditTab('versions');
-    } catch (error) {
-        errorEl.textContent = error.message;
-    } finally {
-        submit.disabled = false;
+        submit.textContent = '💾 Guardar';
+        updateEditDirty();
     }
 });
 
@@ -2136,8 +2239,8 @@ function setAiStatus(text, isError = false, log = null) {
     }
 }
 
-document.getElementById('editAiForm').addEventListener('submit', async (e) => {
-    e.preventDefault();
+// Asking an AI is an action (a background job), not a pending change: it adds the version as soon as it finishes
+async function requestAiDescription() {
     const submit = document.getElementById('editAiSubmit');
     const paintingKeyForJob = editingKey;
     submit.disabled = true;
@@ -2176,7 +2279,7 @@ document.getElementById('editAiForm').addEventListener('submit', async (e) => {
         aiJobRunning = false;
         submit.disabled = !(aiOptions && aiOptions.providers.length);
     }
-});
+}
 
 // ===================== Users dashboard (superadmin) =====================
 const usersModal = document.getElementById('usersModal');
@@ -2293,27 +2396,40 @@ async function setUploadPermission(checkbox) {
 // ---- Description versions (edit / delete) and painting deletion ----
 let editVersions = [];
 
-// Fill the version dropdown; keepId keeps the same version selected after saving
+// Fill the version dropdown; keepId keeps the same version selected. Pending edits/deletions are kept
 function renderEditVersions(keepId = null) {
     const painting = editingPainting();
     if (!painting) return;
+    const previous = currentEditVersion();
     editVersions = [];
     Object.entries(painting.descriptions || {}).forEach(([lang, list]) => {
         (Array.isArray(list) ? list : [list]).forEach(d => editVersions.push({ ...d, language: d.language || lang }));
     });
+    const ids = new Set(editVersions.map(d => d.description_id));
+    [...versionEdits.keys()].forEach(id => { if (!ids.has(id)) versionEdits.delete(id); });
+    [...versionDeletes].forEach(id => { if (!ids.has(id)) versionDeletes.delete(id); });
     const hasVersions = editVersions.length > 0;
     document.getElementById('editVersionSelect').style.display = hasVersions ? '' : 'none';
     document.getElementById('editVersionBox').style.display = hasVersions ? '' : 'none';
     document.getElementById('editVersionsEmpty').style.display = hasVersions ? 'none' : '';
     if (!hasVersions) return;
 
-    const select = document.getElementById('editVersionSelect');
-    select.innerHTML = editVersions.map((d, i) => `
-        <option value="${i}">Versión ${i + 1}${i === 0 ? ' (por defecto)' : ''} · ${esc(d.comment_creator || 'desconocido')} · ${d.generated_at ? esc(new Date(d.generated_at).toLocaleDateString('es-ES')) : 'sin fecha'}</option>
-    `).join('');
-    const keep = editVersions.findIndex(d => d.description_id === keepId);
-    select.value = String(keep === -1 ? 0 : keep);
+    document.getElementById('editVersionSelect').innerHTML = editVersions.map((d, i) => `<option value="${i}"></option>`).join('');
+    refreshVersionOptions();
+    const wanted = keepId || (previous && previous.description_id);
+    const keep = editVersions.findIndex(d => d.description_id === wanted);
+    document.getElementById('editVersionSelect').value = String(keep === -1 ? 0 : keep);
     showEditVersion();
+}
+
+function refreshVersionOptions() {
+    const options = document.getElementById('editVersionSelect').options;
+    editVersions.forEach((d, i) => {
+        if (!options[i]) return;
+        const mark = versionDeletes.has(d.description_id) ? ' · 🗑️ se borrará' : versionEdits.has(d.description_id) ? ' · ✏️ editada' : '';
+        options[i].textContent = `Versión ${i + 1}${i === 0 ? ' (por defecto)' : ''} · ${d.comment_creator || 'desconocido'} · `
+            + `${d.generated_at ? new Date(d.generated_at).toLocaleDateString('es-ES') : 'sin fecha'}${mark}`;
+    });
 }
 
 function currentEditVersion() {
@@ -2324,49 +2440,39 @@ function showEditVersion() {
     const d = currentEditVersion();
     if (!d) return;
     const index = editVersions.indexOf(d);
+    const deleting = versionDeletes.has(d.description_id);
     document.getElementById('editVersionHead').innerHTML =
         `<strong>Versión ${index + 1}</strong>${index === 0 ? '<span class="edit-version-default">se muestra por defecto</span>' : ''}<br>`
         + `${esc(d.comment_creator || 'Creador desconocido')} · ${d.generated_at ? esc(new Date(d.generated_at).toLocaleString('es-ES')) : 'fecha desconocida'}`
         + (d.description_style ? ` · estilo: ${esc(d.description_style)}` : '');
     const textarea = document.getElementById('editVersionText');
-    textarea.value = d.description || '';
-    textarea.defaultValue = textarea.value;
+    textarea.value = versionEdits.has(d.description_id) ? versionEdits.get(d.description_id) : (d.description || '');
     textarea.scrollTop = 0;
-    document.getElementById('editVersionError').textContent = '';
-    setVersionControls(false);
+    textarea.disabled = deleting;
+    textarea.classList.toggle('to-delete', deleting);
+    document.getElementById('editVersionDelete').textContent = deleting ? '↩️ No borrar' : '🗑️ Borrar versión';
+    document.getElementById('editVersionNote').textContent = deleting
+        ? 'Se borrará al pulsar «Guardar».'
+        : versionEdits.has(d.description_id) ? 'Editada: se guardará al pulsar «Guardar».' : '';
 }
 
-function setVersionControls(busy) {
-    const textarea = document.getElementById('editVersionText');
-    ['editVersionSelect', 'editVersionText', 'editVersionDelete'].forEach(id => { document.getElementById(id).disabled = busy; });
-    document.getElementById('editVersionSave').disabled = busy || textarea.value === textarea.defaultValue;
-}
-
-document.getElementById('editVersionText').addEventListener('input', () => setVersionControls(false));
-
-async function versionAction(body, successMessage, keepSelection) {
+document.getElementById('editVersionText').addEventListener('input', (e) => {
     const d = currentEditVersion();
     if (!d) return;
-    setVersionControls(true);
-    document.getElementById('editVersionError').textContent = '';
-    try {
-        await api('api/painting.php', { id: editingKey, description_id: d.description_id, ...body });
-        await afterPaintingChange(successMessage);
-        renderEditVersions(keepSelection ? d.description_id : null);
-    } catch (error) {
-        document.getElementById('editVersionError').textContent = error.message;
-        setVersionControls(false);
-    }
-}
+    if (e.target.value === (d.description || '')) versionEdits.delete(d.description_id);
+    else versionEdits.set(d.description_id, e.target.value);
+    document.getElementById('editVersionNote').textContent = versionEdits.has(d.description_id) ? 'Editada: se guardará al pulsar «Guardar».' : '';
+    refreshVersionOptions();
+});
 
-function saveVersion() {
-    versionAction({ action: 'update_description', text: document.getElementById('editVersionText').value }, '💾 Descripción actualizada', true);
-}
-
-function deleteVersion() {
-    const index = editVersions.indexOf(currentEditVersion());
-    if (!confirm(`¿Borrar la versión ${index + 1} de la descripción? Esta acción no se puede deshacer.`)) return;
-    versionAction({ action: 'delete_description' }, '🗑️ Versión borrada', false);
+function toggleDeleteVersion() {
+    const d = currentEditVersion();
+    if (!d) return;
+    if (versionDeletes.has(d.description_id)) versionDeletes.delete(d.description_id);
+    else versionDeletes.add(d.description_id);
+    showEditVersion();
+    refreshVersionOptions();
+    updateEditDirty();
 }
 
 // Deleting requires typing the painting title exactly (surrounding spaces ignored)
@@ -2398,7 +2504,7 @@ async function deletePainting() {
         return;
     }
     const index = paintings.indexOf(painting);
-    closeEdit();
+    closeEdit(true);
     if (viewerIndex === index) closeViewer();
     if (selectedIndex === index) closeDetail();
     await afterPaintingChange(`🗑️ «${painting.title || 'Sin título'}» eliminado de la colección`);
@@ -2457,7 +2563,7 @@ async function suggestTags() {
                 const themes = (data.result.themes || []).slice(0, vocabulary.max_tags - 1 - periods.length);
                 editTags = { periods, themes };
                 updateEditTagChips();
-                setStatus(`✨ Sugerencia de ${data.result.provider || 'la IA'}: revísala y pulsa «Guardar cambios»`);
+                setStatus(`✨ Sugerencia de ${data.result.provider || 'la IA'}: revísala y pulsa «Guardar»`);
             } else {
                 setStatus(/429|quota|cuota/i.test(data.log || '')
                     ? '⚠ La IA ha agotado su cuota diaria. Prueba con otra en «🤖 IA de procesado».'
@@ -2498,6 +2604,7 @@ function updateEditTagChips() {
     hint.classList.toggle('warn', missing.length > 0);
     hint.textContent = `${total + 1} de ${vocabulary.max_tags} tags (incluido el formato)`
         + (missing.length ? ` · ⚠ falta al menos ${missing.join(' y ')}` : '');
+    updateEditDirty();
 }
 
 // ---- Editor: replace the image (no AI involved) ----
@@ -2507,13 +2614,13 @@ function resetReplaceImage() {
     const painting = editingPainting();
     editImageFile.value = '';
     document.getElementById('editImagePreview').innerHTML = '';
-    document.getElementById('editImageSubmit').disabled = true;
     document.getElementById('editImageStatus').textContent = '';
     document.getElementById('editImageCurrent').textContent = painting
         ? `Actual: ${painting.file_width || '?'} × ${painting.file_height || '?'} px`
             + (painting.file_size ? ` · ${(painting.file_size / 1024 / 1024).toFixed(2)} MB` : '')
             + '. Se sustituye solo el archivo: título, descripciones y tags no cambian y no se consulta a ninguna IA.'
         : '';
+    if (editBaseline) updateEditDirty();
 }
 
 // Drop zone: click/keyboard opens the picker; dropping is handled here (the page-wide handlers only
@@ -2558,14 +2665,16 @@ editImageDrop.addEventListener('drop', (e) => {
 editImageFile.addEventListener('change', () => {
     const file = editImageFile.files[0];
     const preview = document.getElementById('editImagePreview');
-    document.getElementById('editImageSubmit').disabled = !file;
     document.getElementById('editImageStatus').textContent = '';
+    updateEditDirty();
     if (!file) {
         preview.innerHTML = '';
         return;
     }
     const url = URL.createObjectURL(file);
-    preview.innerHTML = `<img alt=""><span>${esc(file.name)}<br><span class="edit-status">${(file.size / 1024 / 1024).toFixed(2)} MB</span></span>`;
+    preview.innerHTML = `<img alt=""><span>${esc(file.name)}<br><span class="edit-status">${(file.size / 1024 / 1024).toFixed(2)} MB</span>`
+        + `<br><span class="edit-status">Se sustituirá al pulsar «Guardar».</span></span>`
+        + `<button type="button" class="btn-small" onclick="resetReplaceImage()">✕ Descartar</button>`;
     const img = preview.querySelector('img');
     img.onload = () => {
         const painting = editingPainting();
@@ -2576,34 +2685,6 @@ editImageFile.addEventListener('change', () => {
         URL.revokeObjectURL(url);
     };
     img.src = url;
-});
-
-document.getElementById('editImageForm').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const file = editImageFile.files[0];
-    if (!file) return;
-    const submit = document.getElementById('editImageSubmit');
-    const status = document.getElementById('editImageStatus');
-    submit.disabled = true;
-    status.classList.remove('error');
-    status.textContent = '⏳ Subiendo la nueva imagen…';
-    try {
-        const form = new FormData();
-        form.append('id', editingKey);
-        form.append('image', file, file.name);
-        const response = await fetch('api/replace_image.php', { method: 'POST', headers: { 'X-Cuadros': '1' }, body: form });
-        const data = await response.json().catch(() => ({}));
-        if (!response.ok) throw new Error(data.error || `Error ${response.status}`);
-        await afterPaintingChange('🖼️ Imagen sustituida');
-        if (viewerIndex !== null && paintingKey(paintings[viewerIndex]) === editingKey) showInViewer(viewerIndex);
-        resetReplaceImage();
-        renderEditTags(); // the format may have changed
-        status.textContent = `✅ Imagen sustituida (${data.width} × ${data.height} px)`;
-    } catch (error) {
-        status.classList.add('error');
-        status.textContent = '⚠ ' + error.message;
-        submit.disabled = false;
-    }
 });
 
 function showEditTab(name) {

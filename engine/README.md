@@ -47,7 +47,12 @@
 > por usuario): sus cuadros son los marcados con ❤️ (tabla `favorites`), no se puede renombrar ni borrar, no aparece en
 > el menú 📁 (para eso está el corazón) y, compartida, se muestra como «Favoritos de <usuario>».
 >
-> **Edición desde la web (solo ggonmar):** botón ✏️ en el detalle del cuadro → `api/painting.php`. Permite cambiar
+> **Edición desde la web (superusuarios):** botón ✏️ en el detalle del cuadro → `api/painting.php`. Panel de tamaño fijo
+> con pestañas **General** (título, título original, artista, año, ubicación, tags), **Imagen** (sustituirla),
+> **Descripción** (versiones, escribir una nueva, pedir a una IA) y **Avanzado** (pendiente/confirmado, eliminar). Los
+> cambios de todas las pestañas quedan pendientes (punto naranja en la pestaña) y se aplican juntos con **Guardar**;
+> cerrar con cambios sin guardar pide confirmación. Pedir una descripción a una IA y eliminar el cuadro son acciones
+> inmediatas. Permite cambiar
 > título, título original, artista, año, ubicación y "confirmado", añadir una descripción propia y pedir una nueva a
 > una IA configurada (Gemini u Ollama, vía `tools/generate_description.py` como trabajo en segundo plano). Tras cada
 > cambio, `tools/after_edit.py` geocodifica la ubicación nueva y regenera el JSON. Las descripciones nuevas nunca
