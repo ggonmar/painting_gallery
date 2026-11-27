@@ -1,0 +1,9 @@
+DirectoryIndex index.php index.html
+
+# Always revalidate the gallery page and its CSS/JS so changes are picked up immediately
+# (index.php also adds ?v=<mtime> to the CSS/JS URLs, because Cloudflare overrides this with a 4h browser cache)
+<IfModule mod_headers.c>
+    <FilesMatch "^(index\.html|app\.css|app\.js|theme-init\.js)$">
+        Header set Cache-Control "no-cache"
+    </FilesMatch>
+</IfModule>

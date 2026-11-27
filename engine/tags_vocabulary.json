@@ -1,0 +1,14 @@
+{
+  "periods": [
+    "medieval", "gótico", "renacimiento", "manierismo", "barroco", "rococó", "neoclasicismo",
+    "romanticismo", "realismo", "impresionismo", "postimpresionismo", "simbolismo", "modernismo",
+    "expresionismo", "cubismo", "surrealismo", "moderno", "contemporáneo"
+  ],
+  "themes": [
+    "paisajista", "mar", "religión", "mitología", "retrato", "autorretrato", "costumbrista", "bodegón",
+    "histórico", "alegoría", "desnudo", "urbano", "nocturno", "interior", "animales", "flores",
+    "sombrío", "bélico", "onírico", "abstracto"
+  ],
+  "max_periods": 2,
+  "max_tags": 6
+}

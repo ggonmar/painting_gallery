@@ -1,0 +1,5 @@
+# The files run on the NAS (Linux): always LF, also when checked out on Windows
+* text=auto eol=lf
+*.jpg binary
+*.jpeg binary
+*.png binary

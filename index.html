@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <script src="js/theme-init.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Galería de Pinturas</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎨</text></svg>">
+    <link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🎨 Galería de Pinturas</h1>
+            <div class="collection-bar">
+                <button class="collection-add" id="collectionAdd" onclick="createCollection()" data-tip="Crear colección" aria-label="Crear colección">+</button>
+                <select id="collectionSelect" class="collection-select" onchange="setActiveCollection(this.value)" aria-label="Colección" hidden></select>
+                <button class="collection-manage" id="collectionManage" onclick="openCollectionModal('manage')" title="Renombrar, compartir o borrar la colección" aria-label="Gestionar colección" hidden>⚙️</button>
+            </div>
+            <div class="stats">
+                <span id="totalCount">Cargando...</span>
+            </div>
+            <div class="header-actions">
+                <button class="theme-toggle" id="themeToggle" onclick="toggleTheme()" title="Cambiar entre modo claro y oscuro" aria-label="Modo oscuro"></button>
+                <div class="account-area" id="accountArea"></div>
+            </div>
+        </header>
+
+        <div class="main-content">
+            <aside class="sidebar">
+                <div class="search-box">
+                    <input type="text" id="searchInput" placeholder="🔍 Buscar por título, artista, año o ubicación...">
+                    <button class="map-btn" onclick="openMap()">🗺️ Ver en el mapa</button>
+                    
+
+                    <div class="advanced-filters-header" onclick="toggleFilters()">
+                        <span class="advanced-filters-title">⚙️ Avanzado</span>
+                        <button class="collapse-btn collapsed">▼</button>
+                    </div>
+                    
+                    <div class="advanced-filters collapsed" id="advancedFilters">
+                        <div class="filter-group upload-only">
+                            <label class="filter-label">⏳ Revisión</label>
+                            <div class="orientation-filters">
+                                <button class="orientation-btn active" data-review="all">Todas</button>
+                                <button class="orientation-btn" data-review="pending">Pendientes</button>
+                                <button class="orientation-btn" data-review="ready">Revisadas</button>
+                            </div>
+                        </div>
+
+                        <div class="filter-group">
+                            <label class="filter-label">🏛️ Época</label>
+                            <select id="periodFilter" class="sort-select"><option value="all">Todas</option></select>
+                        </div>
+
+                        <div class="filter-group">
+                            <label class="filter-label">🎭 Temática</label>
+                            <select id="themeFilter" class="sort-select"><option value="all">Todas</option></select>
+                        </div>
+
+                        <div class="filter-group auth-only">
+                            <label class="filter-label">❤️ Favoritos</label>
+                            <div class="orientation-filters">
+                                <button class="orientation-btn active" data-favorite="all">Todas</button>
+                                <button class="orientation-btn" data-favorite="true">Sí</button>
+                                <button class="orientation-btn" data-favorite="false">No</button>
+                            </div>
+                        </div>
+
+                        <div class="filter-group auth-only">
+                            <label class="filter-label">👁️ Visto en Vivo</label>
+                            <div class="orientation-filters">
+                                <button class="orientation-btn active" data-seen-live="all">Todas</button>
+                                <button class="orientation-btn" data-seen-live="true">Sí</button>
+                                <button class="orientation-btn" data-seen-live="false">No</button>
+                            </div>
+                        </div>
+                        
+                        <div class="filter-group">
+                            <label class="filter-label">📅 Período</label>
+                            <div class="year-range">
+                                <input type="number" id="yearFrom" placeholder="Desde" min="1000" max="2100">
+                                <span class="year-separator">-</span>
+                                <input type="number" id="yearTo" placeholder="Hasta" min="1000" max="2100">
+                            </div>
+                        </div>
+                        
+                        <div class="filter-group">
+                            <label class="filter-label">🔍 Orientación</label>
+                            <div class="orientation-filters">
+                                <button class="orientation-btn active" data-orientation="all">Todas</button>
+                                <button class="orientation-btn" data-orientation="landscape">Horizontal</button>
+                                <button class="orientation-btn" data-orientation="portrait">Vertical</button>
+                            </div>
+                        </div>
+                        
+                        <div class="filter-group">
+                            <label class="filter-label">✔️ Confirmación</label>
+                            <div class="orientation-filters">
+                                <button class="orientation-btn active" data-confirmed="all">Todas</button>
+                                <button class="orientation-btn" data-confirmed="true">Sí</button>
+                                <button class="orientation-btn" data-confirmed="false">No</button>
+                            </div>
+                        </div>
+                        
+                        
+                        <div class="filter-group">
+                            <label class="filter-label">🔍 Confianza</label>
+                            <div class="confidence-slider-container">
+                                <div class="range-slider">
+                                    <div class="range-slider-track" id="sliderTrack"></div>
+                                    <input type="range" id="confidenceMin" min="0" max="100" value="0" step="1">
+                                    <input type="range" id="confidenceMax" min="0" max="100" value="100" step="1">
+                                </div>
+                                <div class="confidence-values">
+                                    <span id="confidenceMinValue">0%</span>
+                                    <span id="confidenceMaxValue">100%</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="filter-group">
+                            <label class="filter-label">🔃 Ordenar por</label>
+                            <select id="sortBy" class="sort-select">
+                                <option value="none">Sin ordenar</option>
+                                <option value="date-asc">Época (más antigua primero)</option>
+                                <option value="date-desc">Época (más reciente primero)</option>
+                                <option value="title-asc">Título (A-Z)</option>
+                                <option value="title-desc">Título (Z-A)</option>
+                                <option value="artist-asc">Artista (A-Z)</option>
+                                <option value="artist-desc">Artista (Z-A)</option>
+                                <option value="desc-yes">Con descripción primero</option>
+                                <option value="desc-no">Sin descripción primero</option>
+                                <option value="added-asc">Agregado (más antiguo primero)</option>
+                                <option value="added-desc">Agregado (más reciente primero)</option>
+                                <option value="updated-asc">Actualizado (más antiguo primero)</option>
+                                <option value="updated-desc" selected>Actualizado (más reciente primero)</option>
+                            </select>
+                        
+                        <button class="filter-reset" onclick="resetFilters()">🔍 Limpiar Filtros</button>
+                    </div>
+                </div>
+                <ul class="painting-list" id="paintingList">
+                    <li class="loading">Cargando pinturas...</li>
+                </ul>
+            </aside>
+
+            <main class="detail-view" id="detailView">
+                <button class="close-button" id="closeButton" onclick="closeDetail()">&times;</button>
+                <div class="empty-state">
+                    <div class="empty-state-icon">🔍</div>
+                    <h2>Selecciona una pintura</h2>
+                    <p>Elige una obra de la lista para ver sus detalles</p>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <div class="viewer" id="viewer" role="dialog" aria-modal="true" aria-hidden="true" aria-label="Visor del cuadro">
+        <div class="viewer-stage" id="viewerStage">
+            <img id="viewerImage" alt="" draggable="false">
+            <div class="viewer-peek" id="viewerPeekPrev" aria-hidden="true"><img alt="" draggable="false"><div class="viewer-peek-caption"></div></div>
+            <div class="viewer-peek" id="viewerPeekNext" aria-hidden="true"><img alt="" draggable="false"><div class="viewer-peek-caption"></div></div>
+            <div class="viewer-lens" id="viewerLens"></div>
+            <div class="viewer-hint" id="viewerHint"></div>
+            <button class="viewer-nav prev" onclick="viewerStep(-1)" aria-label="Anterior">&#8249;</button>
+            <button class="viewer-nav next" onclick="viewerStep(1)" aria-label="Siguiente">&#8250;</button>
+        </div>
+        <aside class="viewer-panel" id="viewerPanel"></aside>
+        <button class="viewer-close" onclick="closeViewer()" aria-label="Cerrar">&times;</button>
+    </div>
+
+    <div class="map-view" id="mapView" role="dialog" aria-modal="true" aria-labelledby="mapTitle">
+        <div class="map-header">
+            <div style="flex: 1;">
+                <h2 id="mapTitle">🗺️ Mapa de la colección</h2>
+                <div class="map-subtitle" id="mapSubtitle"></div>
+            </div>
+            <button class="map-close" onclick="closeMap()" aria-label="Cerrar mapa">&times;</button>
+        </div>
+        <div id="mapCanvas"></div>
+        <div class="map-footer" id="mapFooter"></div>
+    </div>
+
+    <button class="fab-add" id="addButton" onclick="openUpload()" title="Añadir cuadros" aria-label="Añadir cuadros">+<span class="fab-badge" id="uploadBadge"></span></button>
+
+    <div class="modal" id="uploadModal" role="dialog" aria-modal="true" aria-labelledby="uploadTitle">
+        <div class="modal-card">
+            <button class="modal-close" onclick="closeUpload()" aria-label="Cerrar">&times;</button>
+            <h2 id="uploadTitle">➕ Añadir cuadros</h2>
+            <div class="dropzone" id="dropzone" tabindex="0" role="button">
+                <div class="dropzone-icon">🖼️</div>
+                <strong>Arrastra aquí las imágenes</strong><br>
+                o pulsa para seleccionarlas
+            </div>
+            <input type="file" id="fileInput" accept="image/*" multiple hidden>
+            <ul class="upload-list" id="uploadList"></ul>
+        </div>
+    </div>
+
+    <div class="modal" id="authModal" role="dialog" aria-modal="true" aria-labelledby="authTitle">
+        <div class="modal-card" style="width: min(400px, 100%);">
+            <button class="modal-close" onclick="closeAuth()" aria-label="Cerrar">&times;</button>
+            <h2 id="authTitle"></h2>
+            <form class="auth-form" id="authForm" autocomplete="on">
+                <input type="text" id="authUsername" name="username" placeholder="Usuario" autocomplete="username" autocapitalize="none" spellcheck="false">
+                <input type="password" id="authCurrentPassword" placeholder="Contraseña actual" autocomplete="current-password">
+                <input type="password" id="authPassword" name="password" placeholder="Contraseña" autocomplete="current-password">
+                <input type="password" id="authPassword2" placeholder="Repite la contraseña" autocomplete="new-password">
+                <div class="auth-error" id="authError"></div>
+                <button type="submit" id="authSubmit"></button>
+                <div class="auth-switch" id="authSwitch"></div>
+            </form>
+        </div>
+    </div>
+
+    <div class="modal" id="editModal" role="dialog" aria-modal="true" aria-labelledby="editTitle">
+        <div class="modal-card" style="width: min(620px, 100%);">
+            <button class="modal-close" onclick="closeEdit()" aria-label="Cerrar">&times;</button>
+            <h2 id="editTitle">✏️ Editar cuadro</h2>
+            <form class="auth-form" id="editForm">
+                <label class="edit-field"><span>Título</span><input type="text" id="editFieldTitle" maxlength="300" required></label>
+                <label class="edit-field"><span>Título original</span><input type="text" id="editFieldOriginalTitle" maxlength="300"></label>
+                <div class="edit-row">
+                    <label class="edit-field"><span>Artista</span><input type="text" id="editFieldArtist" maxlength="200"></label>
+                    <label class="edit-field"><span>Año</span><input type="text" id="editFieldYear" maxlength="20"></label>
+                </div>
+                <label class="edit-field"><span>Ubicación (museo, ciudad)</span><input type="text" id="editFieldLocation" maxlength="300" placeholder="p. ej. National Gallery of Armenia, Yerevan"></label>
+                <div id="editTags" class="edit-tags"></div>
+                <label class="edit-check"><input type="checkbox" id="editFieldPending"> ⏳ Pendiente de revisión (solo lo ven quienes pueden subir cuadros)</label>
+                <label class="edit-check"><input type="checkbox" id="editFieldConfirmed"> ✔️ Datos confirmados (el motor no volverá a renombrarlo ni a reidentificarlo)</label>
+                <div class="auth-error" id="editError"></div>
+                <button type="submit" id="editSubmit">Guardar cambios</button>
+            </form>
+
+            <div class="edit-section">
+                <h3>🖼️ Sustituir la imagen</h3>
+                <form class="auth-form" id="editImageForm">
+                    <div class="edit-status" id="editImageCurrent"></div>
+                    <div class="dropzone dropzone-compact" id="editImageDrop" tabindex="0" role="button" aria-label="Elegir la nueva imagen">
+                        <strong>Arrastra aquí la nueva imagen</strong><br>
+                        o pulsa para seleccionarla
+                    </div>
+                    <input type="file" id="editImageFile" accept="image/*" hidden>
+                    <div class="edit-image-preview" id="editImagePreview"></div>
+                    <button type="submit" id="editImageSubmit" disabled>Sustituir imagen</button>
+                    <div class="edit-status" id="editImageStatus"></div>
+                </form>
+            </div>
+
+            <div class="edit-section">
+                <h3>📋 Descripción</h3>
+                <div class="edit-tabs" role="tablist">
+                    <button type="button" class="edit-tab" data-tab="versions" role="tab" onclick="showEditTab('versions')">📚 Versiones</button>
+                    <button type="button" class="edit-tab" data-tab="own" role="tab" onclick="showEditTab('own')">📝 Escribir una nueva</button>
+                    <button type="button" class="edit-tab" data-tab="ai" role="tab" onclick="showEditTab('ai')">🤖 Pedir a una IA</button>
+                </div>
+                <div class="edit-tab-panel" data-panel="versions">
+                <div class="edit-versions" id="editVersions">
+                    <select id="editVersionSelect" onchange="showEditVersion()"></select>
+                    <div class="edit-version" id="editVersionBox">
+                        <div class="edit-version-head" id="editVersionHead"></div>
+                        <textarea id="editVersionText" rows="8" maxlength="50000"></textarea>
+                        <div class="edit-version-actions">
+                            <span class="auth-error" id="editVersionError"></span>
+                            <button type="button" class="btn-small" id="editVersionSave" disabled onclick="saveVersion()">💾 Guardar cambios</button>
+                            <button type="button" class="btn-small danger-outline" id="editVersionDelete" onclick="deleteVersion()">🗑️ Borrar versión</button>
+                        </div>
+                    </div>
+                    <p class="edit-status" id="editVersionsEmpty">Este cuadro todavía no tiene descripciones.</p>
+                </div>
+                </div>
+                <div class="edit-tab-panel" data-panel="own" hidden>
+                <form class="auth-form" id="editDescForm">
+                    <textarea id="editDescText" rows="5" maxlength="20000" placeholder="Se añadirá como versión más reciente; las anteriores se conservan."></textarea>
+                    <div class="auth-error" id="editDescError"></div>
+                    <button type="submit" id="editDescSubmit">Añadir descripción</button>
+                </form>
+                </div>
+                <div class="edit-tab-panel" data-panel="ai" hidden>
+                <form class="auth-form" id="editAiForm">
+                    <select id="editAiProvider"></select>
+                    <input type="text" id="editAiStyle" maxlength="200" placeholder="Estilo">
+                    <input type="number" id="editAiLength" min="100" max="20000" step="50" placeholder="Longitud máxima (caracteres)">
+                    <button type="submit" id="editAiSubmit">Generar descripción</button>
+                    <div class="edit-status" id="editAiStatus"></div>
+                </form>
+                </div>
+            </div>
+
+            <div class="edit-section danger-zone">
+                <h3>⚠️ Eliminar cuadro</h3>
+                <p>Se quita de la colección junto con todas sus descripciones y las marcas de visto/favorito de todos los usuarios.
+                   La imagen no se borra: se guarda en la papelera del servidor (<code>data/trash/</code>) por si hubiera que recuperarla.</p>
+                <label class="edit-field" style="margin-bottom: 10px;">
+                    <span>Para confirmar, escribe el título del cuadro: <strong id="editDeleteExpected" style="text-transform: none; color: #b02a37;"></strong></span>
+                    <input type="text" id="editDeleteConfirm" autocomplete="off" spellcheck="false" oninput="updateDeleteButton()">
+                </label>
+                <button type="button" class="danger-btn" id="editDeleteButton" disabled onclick="deletePainting()">🗑️ Eliminar cuadro</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal" id="usersModal" role="dialog" aria-modal="true" aria-labelledby="usersTitle">
+        <div class="modal-card users-card">
+            <button class="modal-close" onclick="closeUsers()" aria-label="Cerrar">&times;</button>
+            <h2 id="usersTitle">👥 Usuarios</h2>
+            <div class="users-stats" id="usersStats"></div>
+            <input type="search" class="users-search" id="usersSearch" placeholder="🔍 Buscar usuario…" autocomplete="off">
+            <div class="users-table-wrap">
+                <table class="users-table">
+                    <thead>
+                        <tr>
+                            <th>Usuario</th>
+                            <th class="hide-mobile">Registro</th>
+                            <th class="hide-mobile">Último acceso</th>
+                            <th class="num" title="Cuadros vistos">👁️</th>
+                            <th class="num" title="Favoritos">❤️</th>
+                            <th class="num">Superusuario</th>
+                        </tr>
+                    </thead>
+                    <tbody id="usersBody"></tbody>
+                </table>
+            </div>
+            <div class="users-pager">
+                <button id="usersPrev" onclick="changeUsersPage(-1)">‹ Anterior</button>
+                <span id="usersPageInfo"></span>
+                <button id="usersNext" onclick="changeUsersPage(1)">Siguiente ›</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal" id="aiModal" role="dialog" aria-modal="true" aria-labelledby="aiTitle">
+        <div class="modal-card" style="width: min(480px, 100%);">
+            <button class="modal-close" onclick="closeAiSettings()" aria-label="Cerrar">&times;</button>
+            <h2 id="aiTitle">🤖 IA de procesado</h2>
+            <p class="edit-status" style="margin-bottom: 14px;">La IA que identifica los cuadros subidos (título, artista, año, ubicación, tags y descripción).
+               También la usa «Reintentar con IA».</p>
+            <form class="auth-form" id="aiForm">
+                <label class="edit-check"><input type="radio" name="aiProvider" value="gemini"> ☁️ Gemini (Google)</label>
+                <select id="aiGeminiModel"></select>
+                <label class="edit-check"><input type="radio" name="aiProvider" value="ollama"> 🖥️ Ollama (tu servidor)</label>
+                <select id="aiOllamaModel"></select>
+                <div class="edit-status" id="aiOllamaInfo"></div>
+                <label class="edit-field"><span>Estilo de las descripciones</span>
+                    <input type="text" id="aiStyle" maxlength="200" placeholder="p. ej. engaging, funny and informative">
+                </label>
+                <label class="edit-field"><span>Longitud máxima (caracteres)</span>
+                    <input type="number" id="aiMaxLength" min="100" max="20000" step="50">
+                </label>
+                <div class="auth-error" id="aiError"></div>
+                <button type="submit" id="aiSubmit">Guardar</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="modal" id="collectionModal" role="dialog" aria-modal="true" aria-labelledby="collectionModalTitle">
+        <div class="modal-card" style="width: min(420px, 100%);">
+            <button class="modal-close" onclick="closeCollectionModal()" aria-label="Cerrar">&times;</button>
+            <h2 id="collectionModalTitle"></h2>
+            <form class="auth-form" id="collectionForm">
+                <input type="text" id="collectionName" maxlength="80" placeholder="Nombre de la colección" autocomplete="off" required>
+                <div class="auth-error" id="collectionError"></div>
+                <button type="submit" id="collectionSubmit"></button>
+            </form>
+            <div class="edit-section" id="collectionManageExtra">
+                <button type="button" class="btn-small" onclick="copyCollectionLink()">🔗 Copiar enlace de solo lectura</button>
+                <p class="edit-status" style="margin: 8px 0 14px;">Quien tenga el enlace podrá ver la colección, pero no modificarla.</p>
+                <button type="button" class="danger-btn" id="collectionDelete" onclick="deleteCollection()">🗑️ Borrar colección</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="collection-menu" id="collectionMenu" hidden></div>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+    <script src="js/app.js"></script>
+</body>
+</html>

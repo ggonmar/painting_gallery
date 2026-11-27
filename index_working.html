@@ -1,0 +1,1408 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GalerÃƒÂ­a de Pinturas</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+        }
+
+        header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .stats {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 350px 1fr;
+            min-height: 600px;
+        }
+
+        .sidebar {
+            background: #f8f9fa;
+            border-right: 1px solid #dee2e6;
+            overflow-y: auto;
+            max-height: calc(100vh - 200px);
+        }
+
+        .search-box {
+            padding: 20px;
+            border-bottom: 1px solid #dee2e6;
+            position: sticky;
+            top: 0;
+            background: #f8f9fa;
+            z-index: 10;
+        }
+
+        .search-box input[type="text"] {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #dee2e6;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+            margin-bottom: 15px;
+        }
+
+        .search-box input[type="text"]:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .advanced-filters-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 5px 0 8px 0;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .advanced-filters-title {
+            font-weight: 600;
+            color: #495057;
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .collapse-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 16px;
+            color: #667eea;
+            padding: 5px;
+            transition: transform 0.3s;
+        }
+
+        .collapse-btn.collapsed {
+            transform: rotate(-90deg);
+        }
+
+        .advanced-filters {
+            transition: max-height 0.3s ease-out, opacity 0.3s ease-out;
+            overflow: hidden;
+            max-height: 500px;
+            opacity: 1;
+        }
+
+        .advanced-filters.collapsed {
+            max-height: 0;
+            opacity: 0;
+        }
+
+        .search-box input[type="number"] {
+            padding: 8px;
+            border: 2px solid #dee2e6;
+            border-radius: 6px;
+            font-size: 13px;
+        }
+
+        .search-box input[type="number"]:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .filter-group {
+            margin-top: 20px;
+        }
+
+        .filter-label {
+            font-size: 12px;
+            font-weight: 600;
+            color: #495057;
+            margin-bottom: 8px;
+            display: block;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            text-align: center;
+        }
+
+        .year-range {
+            display: grid;
+            grid-template-columns: 1fr auto 1fr;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .year-range input {
+            padding: 8px;
+            border: 2px solid #dee2e6;
+            border-radius: 6px;
+            font-size: 13px;
+            text-align: center;
+        }
+
+        .year-range input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .year-separator {
+            color: #6c757d;
+            font-weight: 600;
+        }
+
+        .orientation-filters {
+            display: flex;
+            gap: 8px;
+        }
+
+        .orientation-btn {
+            flex: 1;
+            padding: 8px;
+            border: 2px solid #dee2e6;
+            border-radius: 6px;
+            background: white;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 600;
+            transition: all 0.3s;
+            text-align: center;
+        }
+
+        .orientation-btn:hover {
+            border-color: #667eea;
+        }
+
+        .orientation-btn.active {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+
+        .sort-select {
+            width: 100%;
+            padding: 8px 10px;
+            border: 1px solid #dee2e6;
+            border-radius: 6px;
+            font-size: 13px;
+            background: white;
+            cursor: pointer;
+            transition: border-color 0.3s;
+        }
+
+        .sort-select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .confidence-slider-container {
+            padding: 0px 0px;
+        }
+
+        .confidence-values {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 8px;
+            font-size: 12px;
+            color: #495057;
+            font-weight: 600;
+        }
+
+        .range-slider {
+            position: relative;
+            height: 6px;
+            background: #dee2e6;
+            border-radius: 3px;
+            margin: 0px 0;
+        }
+
+        .range-slider-track {
+            position: absolute;
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            border-radius: 3px;
+        }
+
+        .range-slider input[type="range"] {
+            position: absolute;
+            width: 100%;
+            height: 6px;
+            background: transparent;
+            pointer-events: none;
+            -webkit-appearance: none;
+            top: 0;
+        }
+
+        .range-slider input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            pointer-events: auto;
+            width: 18px;
+            height: 18px;
+            background: #667eea;
+            border: 3px solid white;
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+            transition: all 0.2s;
+        }
+
+        .range-slider input[type="range"]::-webkit-slider-thumb:hover {
+            background: #764ba2;
+            transform: scale(1.1);
+        }
+
+        .range-slider input[type="range"]::-moz-range-thumb {
+            pointer-events: auto;
+            width: 18px;
+            height: 18px;
+            background: #667eea;
+            border: 3px solid white;
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+            transition: all 0.2s;
+        }
+
+        .range-slider input[type="range"]::-moz-range-thumb:hover {
+            background: #764ba2;
+            transform: scale(1.1);
+        }
+
+        .filter-reset {
+            margin-top: 10px;
+            width: 100%;
+            padding: 8px;
+            border: none;
+            border-radius: 6px;
+            background: #6c757d;
+            color: white;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 600;
+            transition: background 0.3s;
+        }
+
+        .filter-reset:hover {
+            background: #5a6268;
+        }
+
+        .painting-list {
+            list-style: none;
+        }
+
+        .painting-item {
+            padding: 15px 20px;
+            border-bottom: 1px solid #e9ecef;
+            cursor: pointer;
+            transition: all 0.3s;
+            position: relative;
+        }
+
+        .painting-item:hover {
+            background: #e9ecef;
+        }
+
+        .painting-item.active {
+            background: #667eea;
+            color: white;
+        }
+
+        .painting-item.no-description::before {
+            content: 'Ã°Å¸â€œÂ';
+            position: absolute;
+            right: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 12px;
+            opacity: 0.4;
+        }
+
+        .painting-item.active.no-description::before {
+            opacity: 0.7;
+        }
+
+        .painting-item-title {
+            font-weight: 600;
+            font-size: 15px;
+            margin-bottom: 3px;
+        }
+
+        .painting-item-artist {
+            font-size: 13px;
+            opacity: 0.7;
+        }
+
+        .painting-item-year {
+            font-size: 12px;
+            opacity: 0.6;
+            margin-top: 2px;
+        }
+
+        .detail-view {
+            padding: 40px;
+            overflow-y: auto;
+            max-height: calc(100vh - 200px);
+        }
+
+        .close-button {
+            display: none;
+            position: sticky;
+            top: 15px;
+            right: 15px;
+            float: right;
+            width: 40px;
+            height: 40px;
+            background: rgba(102, 126, 234, 0.95);
+            border: none;
+            border-radius: 50%;
+            color: white;
+            font-size: 24px;
+            cursor: pointer;
+            z-index: 10;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            transition: all 0.3s;
+        }
+
+        .close-button:hover {
+            background: rgba(118, 75, 162, 0.95);
+            transform: scale(1.1);
+        }
+
+        /* Show close button when painting is selected */
+        .detail-view.has-content .close-button {
+            display: block;
+        }
+
+        .detail-view {
+            position: relative;
+        }
+
+        .empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: #6c757d;
+        }
+
+        .empty-state-icon {
+            font-size: 80px;
+            margin-bottom: 20px;
+            opacity: 0.3;
+        }
+
+        .painting-image {
+            width: 100%;
+            max-height: 600px;
+            object-fit: contain;
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            margin-bottom: 30px;
+            background: #f8f9fa;
+        }
+
+        .painting-header {
+            margin-bottom: 30px;
+        }
+
+        .painting-original-title {
+            font-size: 14px;
+            color: #6c757d;
+            font-style: italic;
+            margin-bottom: 5px;
+        }
+
+        .painting-title {
+            font-size: 2.2em;
+            font-weight: 700;
+            color: #212529;
+            margin-bottom: 10px;
+        }
+
+        .painting-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            font-size: 1.1em;
+            color: #495057;
+        }
+
+        .painting-meta span {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-top: 10px;
+        }
+
+        .badge-confidence {
+            background: #28a745;
+            color: white;
+        }
+
+        .badge-confidence.medium {
+            background: #ffc107;
+            color: #212529;
+        }
+
+        .badge-confidence.low {
+            background: #dc3545;
+            color: white;
+        }
+
+        .badge-source {
+            background: #667eea;
+            color: white;
+        }
+
+        .badge-orientation {
+            background: #6c757d;
+            color: white;
+        }
+
+        .seen-live-container {
+            margin-top: 15px;
+            padding: 12px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border: 1px solid #dee2e6;
+        }
+
+        .seen-live-checkbox {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .seen-live-checkbox input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+            margin: 0;
+        }
+
+        .seen-live-checkbox label {
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            color: #495057;
+            margin: 0;
+        }
+
+        .seen-live-checkbox input[type="checkbox"]:checked + label {
+            color: #28a745;
+            font-weight: 600;
+        }
+
+        .badge-confirmed {
+            background: #17a2b8;
+            color: white;
+        }
+
+        .info-section {
+            margin-top: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 10px;
+        }
+
+        .info-section h3 {
+            font-size: 1.3em;
+            margin-bottom: 15px;
+            color: #495057;
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .info-item {
+            padding: 12px;
+            background: white;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+        }
+
+        .info-label {
+            font-size: 12px;
+            color: #6c757d;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 5px;
+        }
+
+        .info-value {
+            font-size: 15px;
+            font-weight: 600;
+            color: #212529;
+        }
+
+        .description-section {
+            margin-top: 30px;
+        }
+
+        .description-section h3 {
+            font-size: 1.5em;
+            margin-bottom: 20px;
+            color: #212529;
+        }
+
+        .description-selector {
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #e7f3ff;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+        }
+
+        .description-selector label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #495057;
+        }
+
+        .description-selector select {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #667eea;
+            border-radius: 6px;
+            font-size: 14px;
+            background: white;
+            cursor: pointer;
+        }
+
+        .description-selector select:focus {
+            outline: none;
+            border-color: #764ba2;
+        }
+
+        .description-text {
+            font-size: 16px;
+            line-height: 1.8;
+            color: #495057;
+            text-align: justify;
+            white-space: pre-wrap;
+        }
+
+        .description-history {
+            margin-top: 15px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-left: 4px solid #6c757d;
+            border-radius: 5px;
+            font-size: 13px;
+            color: #495057;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 50px;
+            font-size: 1.2em;
+            color: #6c757d;
+        }
+
+        .error {
+            text-align: center;
+            padding: 50px;
+            color: #dc3545;
+            font-size: 1.1em;
+        }
+
+        @media (max-width: 768px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+
+            .sidebar {
+                max-height: 100vh;
+                border-right: none;
+                border-bottom: 1px solid #dee2e6;
+            }
+
+            .detail-view {
+                display: none;
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100vh;
+                max-height: 100vh;
+                background: white;
+                z-index: 1000;
+                padding: 20px;
+                padding-top: 60px;
+                padding-bottom: 80px;
+                overflow-y: auto;
+            }
+
+            .detail-view.show {
+                display: block;
+            }
+
+            .show .close-button {
+                display: block !important;
+            }
+
+            .painting-title {
+                font-size: 1.5em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Ã°Å¸Å½Â¨ GalerÃƒÂ­a de Pinturas</h1>
+            <div class="stats">
+                <span id="totalCount">Cargando...</span>
+            </div>
+        </header>
+
+        <div class="main-content">
+            <aside class="sidebar">
+                <div class="search-box">
+                    <input type="text" id="searchInput" placeholder="Ã°Å¸â€Â Buscar por tÃƒÂ­tulo, artista, aÃƒÂ±o o ubicaciÃƒÂ³n...">
+                    
+
+                    <div class="advanced-filters-header" onclick="toggleFilters()">
+                        <span class="advanced-filters-title">Ã¢Å¡â„¢Ã¯Â¸Â Avanzado</span>
+                        <button class="collapse-btn collapsed">Ã¢â€“Â¼</button>
+                    </div>
+                    
+                    <div class="advanced-filters collapsed" id="advancedFilters">
+                        <div class="filter-group">
+                            <label class="filter-label">Ã°Å¸â€œâ€¦ PerÃƒÂ­odo</label>
+                            <div class="year-range">
+                                <input type="number" id="yearFrom" placeholder="Desde" min="1000" max="2100">
+                                <span class="year-separator">-</span>
+                                <input type="number" id="yearTo" placeholder="Hasta" min="1000" max="2100">
+                            </div>
+                        </div>
+                        
+                        <div class="filter-group">
+                            <label class="filter-label">Ã°Å¸â€“Â¼Ã¯Â¸Â OrientaciÃƒÂ³n</label>
+                            <div class="orientation-filters">
+                                <button class="orientation-btn active" data-orientation="all">Todas</button>
+                                <button class="orientation-btn" data-orientation="landscape">Horizontal</button>
+                                <button class="orientation-btn" data-orientation="portrait">Vertical</button>
+                            </div>
+                        </div>
+                        
+                        <div class="filter-group">
+                            <label class="filter-label">Ã¢Å“â€Ã¯Â¸Â Confirmacion</label>
+                            <div class="orientation-filters">
+                                <button class="orientation-btn active" data-confirmed="all">Todas</button>
+                                <button class="orientation-btn" data-confirmed="true">SÃƒÂ­</button>
+                                <button class="orientation-btn" data-confirmed="false">No</button>
+                            </div>
+                        </div>
+                        
+                        
+                        <div class="filter-group">
+                            <label class="filter-label">Ã°Å¸â€˜Â Confianza</label>
+                            <div class="confidence-slider-container">
+                                <div class="range-slider">
+                                    <div class="range-slider-track" id="sliderTrack"></div>
+                                    <input type="range" id="confidenceMin" min="0" max="100" value="0" step="1">
+                                    <input type="range" id="confidenceMax" min="0" max="100" value="100" step="1">
+                                </div>
+                                <div class="confidence-values">
+                                    <span id="confidenceMinValue">0%</span>
+                                    <span id="confidenceMaxValue">100%</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="filter-group">
+                            <label class="filter-label">Ã°Å¸â€Æ’ Ordenar por</label>
+                            <select id="sortBy" class="sort-select">
+                                <option value="none">Sin ordenar</option>
+                                <option value="date-asc">Ãƒâ€°poca (mÃƒÂ¡s antigua primero)</option>
+                                <option value="date-desc">Ãƒâ€°poca (mÃƒÂ¡s reciente primero)</option>
+                                <option value="title-asc">TÃƒÂ­tulo (A-Z)</option>
+                                <option value="title-desc">TÃƒÂ­tulo (Z-A)</option>
+                                <option value="artist-asc">Artista (A-Z)</option>
+                                <option value="artist-desc">Artista (Z-A)</option>
+                                <option value="desc-yes">Con descripciÃƒÂ³n primero</option>
+                                <option value="desc-no">Sin descripciÃƒÂ³n primero</option>
+                                <option value="added-asc">Agregado (mÃƒÂ¡s antiguo primero)</option>
+                                <option value="added-desc">Agregado (mÃƒÂ¡s reciente primero)</option>
+                                <option value="updated-asc">Actualizado (mÃƒÂ¡s antiguo primero)</option>
+                                <option value="updated-desc" selected>Actualizado (mÃƒÂ¡s reciente primero)</option>
+                            </select>
+                        
+                        <button class="filter-reset" onclick="resetFilters()">Ã°Å¸â€â€ž Limpiar Filtros</button>
+                    </div>
+                </div>
+                <ul class="painting-list" id="paintingList">
+                    <li class="loading">Cargando pinturas...</li>
+                </ul>
+            </aside>
+
+            <main class="detail-view" id="detailView">
+                <button class="close-button" id="closeButton" onclick="closeDetail()">&times;</button>
+                <div class="empty-state">
+                    <div class="empty-state-icon">Ã°Å¸â€“Â¼Ã¯Â¸Â</div>
+                    <h2>Selecciona una pintura</h2>
+                    <p>Elige una obra de la lista para ver sus detalles</p>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <script>
+        let paintings = [];
+        let filteredPaintings = [];
+        let selectedIndex = null;
+        let currentDescriptions = []; // Store current painting's descriptions
+        let filters = {
+            search: '',
+            yearFrom: null,
+            yearTo: null,
+            orientation: 'all',
+            confirmed: 'all',
+            confidenceMin: 0,
+            confidenceMax: 100,
+            sortBy: 'updated-desc'
+        };
+
+        // Load filters from localStorage
+        function loadFiltersFromStorage() {
+            const saved = localStorage.getItem('paintingFilters');
+            if (saved) {
+                try {
+                    const savedFilters = JSON.parse(saved);
+                    filters = { ...filters, ...savedFilters };
+                    
+                    // Restore UI elements
+                    document.getElementById('searchInput').value = filters.search || '';
+                    document.getElementById('yearFrom').value = filters.yearFrom || '';
+                    document.getElementById('yearTo').value = filters.yearTo || '';
+                    document.getElementById('sortBy').value = filters.sortBy || 'none';
+                    
+                    // Restore orientation buttons
+                    document.querySelectorAll('.orientation-btn').forEach(btn => {
+                        btn.classList.toggle('active', btn.dataset.orientation === filters.orientation);
+                    });
+                    
+                    // Restore confirmed buttons
+                    document.querySelectorAll('[data-confirmed]').forEach(btn => {
+                        btn.classList.toggle('active', btn.dataset.confirmed === filters.confirmed);
+                    });
+                    
+                    // Restore confidence slider
+                    if (filters.confidenceMin !== undefined && filters.confidenceMax !== undefined) {
+                        document.getElementById('confidenceMin').value = filters.confidenceMin;
+                        document.getElementById('confidenceMax').value = filters.confidenceMax;
+                        updateConfidenceSlider();
+                    }
+                } catch (e) {
+                    console.warn('Could not load saved filters:', e);
+                }
+            }
+        }
+
+        // Save filters to localStorage
+        function saveFiltersToStorage() {
+            localStorage.setItem('paintingFilters', JSON.stringify(filters));
+        }
+
+        // Save selected painting to localStorage
+        function saveSelectedPainting(index) {
+            if (index !== null && paintings[index]) {
+                localStorage.setItem('selectedPaintingPath', paintings[index].file_path);
+            } else {
+                localStorage.removeItem('selectedPaintingPath');
+            }
+        }
+        // Seen Live functionality
+        function saveSeenLiveStatus(filename, status) {
+            const seenLiveData = JSON.parse(localStorage.getItem('seen-live-paintings') || '{}');
+            seenLiveData[filename] = status;
+            localStorage.setItem('seen-live-paintings', JSON.stringify(seenLiveData));
+        }
+
+        function getSeenLiveStatus(filename) {
+            const seenLiveData = JSON.parse(localStorage.getItem('seen-live-paintings') || '{}');
+            return seenLiveData[filename] === true;
+        }
+
+        function handleSeenLiveChange(filename) {
+            const checkbox = document.getElementById('seenLiveCheckbox');
+            if (checkbox) {
+                saveSeenLiveStatus(filename, checkbox.checked);
+            }
+        }
+
+
+        // Load and restore selected painting
+        function loadSelectedPainting() {
+            const savedPath = localStorage.getItem('selectedPaintingPath');
+            if (savedPath) {
+                const index = paintings.findIndex(p => p.file_path === savedPath);
+                if (index !== -1) {
+                    selectPainting(index);
+                }
+            }
+        }
+
+        // Load library
+        async function loadLibrary() {
+            try {
+                const response = await fetch('painting_library.json');
+                if (!response.ok) throw new Error('No se pudo cargar la biblioteca');
+                
+                const data = await response.json();
+                paintings = data.paintings || [];
+                
+                // Load saved filters and apply them
+                loadFiltersFromStorage();
+                filteredPaintings = [...paintings];
+                applyFilters();
+                
+                document.getElementById('totalCount').textContent = 
+                    `${paintings.length} obra${paintings.length !== 1 ? 's' : ''} en la colecciÃƒÂ³n`;
+                
+                // Restore selected painting after filters are applied
+                loadSelectedPainting();
+            } catch (error) {
+                document.getElementById('paintingList').innerHTML = 
+                    `<li class="error">Error al cargar: ${error.message}</li>`;
+            }
+        }
+
+        // Render painting list
+        function renderList() {
+            const listEl = document.getElementById('paintingList');
+            
+            if (filteredPaintings.length === 0) {
+                listEl.innerHTML = '<li class="empty-state" style="padding: 30px; text-align: center;">No se encontraron resultados</li>';
+                return;
+            }
+
+            listEl.innerHTML = filteredPaintings.map((painting, index) => {
+                // Check if painting has any descriptions
+                const hasDescription = painting.descriptions && 
+                                       Object.values(painting.descriptions).some(arr => arr && arr.length > 0);
+                const noDescClass = hasDescription ? '' : ' no-description';
+                
+                // Get the painting's index in the original paintings array
+                const paintingIndex = paintings.indexOf(painting);
+                
+                return `
+                    <li class="painting-item ${paintingIndex === selectedIndex ? 'active' : ''}${noDescClass}" 
+                        onclick="selectPainting(${paintingIndex})">
+                        <div class="painting-item-title">${painting.title || 'Sin tÃƒÂ­tulo'}</div>
+                        <div class="painting-item-artist">${painting.artist || 'Artista desconocido'}</div>
+                        <div class="painting-item-year">${painting.year || 'AÃƒÂ±o desconocido'}</div>
+                    </li>
+                `;
+            }).join('');
+        }
+
+        // Select and display painting
+        function selectPainting(index) {
+            selectedIndex = index;
+            const painting = paintings[index];
+            
+            renderList();
+            renderDetail(painting);
+            
+            // Save selected painting to localStorage
+            saveSelectedPainting(index);
+            
+            // Show detail view on mobile first
+            if (window.innerWidth <= 768) {
+                document.getElementById('detailView').classList.add('show');
+            }
+            
+            // Scroll detail view to top (after showing to ensure it works)
+            setTimeout(() => {
+                document.getElementById('detailView').scrollTop = 0;
+            }, 0);
+        }
+
+        // Close detail view and show empty state
+        function closeDetail() {
+            const detailView = document.getElementById('detailView');
+            detailView.classList.remove('show');
+            detailView.classList.remove('has-content');
+            detailView.scrollTop = 0;
+            selectedIndex = null;
+            saveSelectedPainting(null); // Clear from localStorage
+            renderList();
+            
+            // Show empty state
+            detailView.innerHTML = `
+                <button class="close-button" id="closeButton" onclick="closeDetail()">&times;</button>
+                <div class="empty-state">
+                    <div class="empty-state-icon">Ã°Å¸â€“Â¼Ã¯Â¸Â</div>
+                    <h2>Selecciona una pintura</h2>
+                    <p>Elige una obra de la lista para ver sus detalles</p>
+                </div>
+            `;
+        }
+
+        // Render painting detail
+        function renderDetail(painting) {
+            const detailView = document.getElementById('detailView');
+            detailView.classList.add('has-content');
+            
+            // Get image path
+            const imagePath = painting.file_path || painting.original_filename || '';
+            const imageFileName = imagePath.split('\\').pop().split('/').pop();
+            
+            // Get description (handle both old and new format)
+            let descriptions = [];
+            
+            if (painting.descriptions) {
+                // New format: nested by language
+                const lang = Object.keys(painting.descriptions)[0];
+                if (lang) {
+                    const descArray = painting.descriptions[lang];
+                    if (Array.isArray(descArray)) {
+                        // Array of descriptions (newest format)
+                        descriptions = descArray.map((desc, idx) => ({
+                            text: desc.description,
+                            date: desc.generated_at ? new Date(desc.generated_at).toLocaleString('es-ES') : 'Fecha desconocida',
+                            style: desc.description_style || 'Estilo no especificado',
+                            creator: desc.comment_creator || 'Creador no especificado',
+                            maxLength: desc.max_length || 'No especificada',
+                            index: idx
+                        }));
+                    } else {
+                        // Single description object (old format)
+                        descriptions = [{
+                            text: descArray.description || '',
+                            date: descArray.generated_at ? new Date(descArray.generated_at).toLocaleString('es-ES') : 'Fecha desconocida',
+                            style: descArray.description_style || 'Estilo no especificado',
+                            creator: descArray.comment_creator || 'Creador no especificado',
+                            maxLength: descArray.max_length || 'No especificada',
+                            index: 0
+                        }];
+                    }
+                }
+            } else if (painting.description) {
+                // Very old format: direct description field
+                descriptions = [{
+                    text: painting.description,
+                    date: 'Fecha desconocida',
+                    style: 'Estilo no especificado',
+                    creator: 'Creador no especificado',
+                    maxLength: 'No especificada',
+                    index: 0
+                }];
+            }
+
+            // Store descriptions for the selector function
+            currentDescriptions = descriptions;
+
+            // Confidence badge
+            const confidence = painting.confidence_score || 0;
+            let confidenceBadge = 'badge-confidence';
+            let confidenceText = 'Alta';
+            if (confidence < 0.5) {
+                confidenceBadge += ' low';
+                confidenceText = 'Baja';
+            } else if (confidence < 0.8) {
+                confidenceBadge += ' medium';
+                confidenceText = 'Media';
+            }
+
+            detailView.innerHTML = `
+                <button class="close-button" onclick="closeDetail()">&times;</button>
+                ${imageFileName ? `<a href="${imageFileName}" target="_blank"><img src="${imageFileName}" alt="${painting.title}" class="painting-image" loading="lazy" onerror="this.style.display='none'"></a>` : ''}
+                
+                <div class="painting-header">
+                    ${painting.original_title && painting.original_title !== painting.title ? 
+                        `<div class="painting-original-title">TÃƒÂ­tulo original: ${painting.original_title}</div>` : ''}
+                    <h2 class="painting-title">${painting.title || 'Sin tÃƒÂ­tulo'}</h2>
+                    <div class="painting-meta">
+                        <span><strong>Ã°Å¸Å½Â¨ Artista:</strong> ${painting.artist || 'Desconocido'}</span>
+                        <span><strong>Ã°Å¸â€œâ€¦ AÃƒÂ±o:</strong> ${painting.year || 'Desconocido'}</span>
+                        ${painting.location ? `<span><strong>Ã°Å¸â€œÂ UbicaciÃƒÂ³n:</strong> ${painting.location}</span>` : ''}
+                    </div>
+                    <div>
+                        <span class="badge ${confidenceBadge}">Confianza: ${(confidence * 100).toFixed(0)}% (${confidenceText})</span>
+                        ${painting.info_data_source ? `<span class="badge badge-source">${painting.info_data_source}</span>` : ''}
+                        ${painting.orientation ? `<span class="badge badge-orientation">${painting.orientation}</span>` : ''}
+                        ${painting.confirmed ? `<span class="badge badge-confirmed">Ã¢Å“â€œ Confirmado</span>` : ''}
+                    </div>
+                </div>
+
+                <div class="seen-live-container">
+                    <div class="seen-live-checkbox">
+                        <input type="checkbox" id="seenLiveCheckbox" onchange="handleSeenLiveChange('${painting.file_path}')" ${getSeenLiveStatus(painting.file_path) ? 'checked' : ''}>
+                        <label for="seenLiveCheckbox"> La he visto en vivo</label>
+                    </div>
+                </div>
+
+                <div class="info-section">
+                    <h3>Ã°Å¸â€œÅ  InformaciÃƒÂ³n TÃƒÂ©cnica</h3>
+                    <div class="info-grid">
+                        ${painting.file_width && painting.file_height ? `
+                            <div class="info-item">
+                                <div class="info-label">Dimensiones</div>
+                                <div class="info-value">${painting.file_width} Ãƒâ€” ${painting.file_height} px</div>
+                            </div>
+                        ` : ''}
+                        ${painting.file_size ? `
+                            <div class="info-item">
+                                <div class="info-label">TamaÃƒÂ±o de archivo</div>
+                                <div class="info-value">${(painting.file_size / 1024 / 1024).toFixed(2)} MB</div>
+                            </div>
+                        ` : ''}
+                        ${painting.added_to_library ? `
+                            <div class="info-item">
+                                <div class="info-label">Agregado</div>
+                                <div class="info-value">${new Date(painting.added_to_library).toLocaleDateString('es-ES')}</div>
+                            </div>
+                        ` : ''}
+                        ${painting.updated_on_library ? `
+                            <div class="info-item">
+                                <div class="info-label">Actualizado</div>
+                                <div class="info-value">${new Date(painting.updated_on_library).toLocaleDateString('es-ES')}</div>
+                            </div>
+                        ` : ''}
+                    </div>
+                </div>
+
+                ${descriptions.length > 0 ? `
+                    <div class="description-section">
+                        <h3>Ã°Å¸â€œâ€“ DescripciÃƒÂ³n</h3>
+                        
+                        ${descriptions.length > 1 ? `
+                            <div class="description-selector">
+                                <label for="descSelector">Ã°Å¸â€œÂ Selecciona una versiÃƒÂ³n de la descripciÃƒÂ³n (${descriptions.length} disponibles):</label>
+                                <select id="descSelector" onchange="changeDescription()">
+                                    ${descriptions.map((desc, idx) => `
+                                        <option value="${idx}">
+                                            VersiÃƒÂ³n ${idx + 1}: ${desc.creator}, Estilo: ${desc.style}, Longitud: ${desc.maxLength} (${desc.date})
+                                        </option>
+                                    `).join('')}
+                                </select>
+                            </div>
+                        ` : ''}
+                        
+                        ${descriptions.length > 0 ? `
+                            <div class="description-history" id="descriptionMeta">
+                                <strong>Ã¢â€žÂ¹Ã¯Â¸Â InformaciÃƒÂ³n:</strong> Generada el ${descriptions[0].date} Ã¢â‚¬Â¢ Creador: ${descriptions[0].creator} Ã¢â‚¬Â¢ Estilo: ${descriptions[0].style} Ã¢â‚¬Â¢ Longitud mÃƒÂ¡xima: ${descriptions[0].maxLength}
+                            </div>
+                        ` : ''}
+                        
+                        <div id="descriptionText" class="description-text">${descriptions[0].text}</div>
+                    </div>
+                ` : ''}
+            `;
+        }
+
+        // Change displayed description
+        function changeDescription() {
+            const selector = document.getElementById('descSelector');
+            const textEl = document.getElementById('descriptionText');
+            const metaEl = document.getElementById('descriptionMeta');
+            
+            if (!selector || !textEl || !metaEl || currentDescriptions.length === 0) return;
+            
+            const selectedIdx = parseInt(selector.value);
+            const desc = currentDescriptions[selectedIdx];
+            
+            textEl.textContent = desc.text;
+            metaEl.innerHTML = `<strong>Ã¢â€žÂ¹Ã¯Â¸Â InformaciÃƒÂ³n:</strong> Generada el ${desc.date} Ã¢â‚¬Â¢ Creador: ${desc.creator} Ã¢â‚¬Â¢ Estilo: ${desc.style} Ã¢â‚¬Â¢ Longitud mÃƒÂ¡xima: ${desc.maxLength}`;
+        }
+
+        // Apply all filters
+        function applyFilters() {
+            filteredPaintings = paintings.filter(painting => {
+                // Text search
+                if (filters.search) {
+                    const query = filters.search.toLowerCase();
+                    const title = (painting.title || '').toLowerCase();
+                    const artist = (painting.artist || '').toLowerCase();
+                    const year = (painting.year || '').toString();
+                    const originalTitle = (painting.original_title || '').toLowerCase();
+                    const location = (painting.location || '').toLowerCase();
+                    
+                    if (!title.includes(query) && !artist.includes(query) && 
+                        !year.includes(query) && !originalTitle.includes(query) && 
+                        !location.includes(query)) {
+                        return false;
+                    }
+                }
+                
+                // Year range filter
+                if (filters.yearFrom || filters.yearTo) {
+                    const paintingYear = parseInt(painting.year);
+                    if (isNaN(paintingYear)) return false;
+                    
+                    if (filters.yearFrom && paintingYear < filters.yearFrom) return false;
+                    if (filters.yearTo && paintingYear > filters.yearTo) return false;
+                }
+                
+                // Orientation filter
+                if (filters.orientation !== 'all') {
+                    if (painting.orientation !== filters.orientation) return false;
+                }
+                
+                // Confirmed status filter
+                if (filters.confirmed !== 'all') {
+                    const isConfirmed = painting.confirmed === true;
+                    const filterConfirmed = filters.confirmed === 'true';
+                    if (isConfirmed !== filterConfirmed) return false;
+                }
+                
+                // Confidence filter
+                const confidence = (painting.confidence_score || 0) * 100;
+                if (confidence < filters.confidenceMin || confidence > filters.confidenceMax) {
+                    return false;
+                }
+                
+                return true;
+            });
+            
+            // Apply sorting
+            applySorting();
+            
+            // Save filters to localStorage
+            saveFiltersToStorage();
+            
+            selectedIndex = null;
+            renderList();
+        }
+        
+        // Apply sorting to filtered paintings
+        function applySorting() {
+            if (filters.sortBy === 'none') return;
+            
+            filteredPaintings.sort((a, b) => {
+                switch (filters.sortBy) {
+                    case 'date-asc':
+                        return parseInt(a.year || '9999') - parseInt(b.year || '9999');
+                    case 'date-desc':
+                        return parseInt(b.year || '0') - parseInt(a.year || '0');
+                    case 'title-asc':
+                        return (a.title || '').localeCompare(b.title || '');
+                    case 'title-desc':
+                        return (b.title || '').localeCompare(a.title || '');
+                    case 'artist-asc':
+                        return (a.artist || '').localeCompare(b.artist || '');
+                    case 'artist-desc':
+                        return (b.artist || '').localeCompare(a.artist || '');
+                    case 'desc-yes': {
+                        const aHasDesc = a.descriptions && Object.values(a.descriptions).some(arr => arr.length > 0 && arr[0].description);
+                        const bHasDesc = b.descriptions && Object.values(b.descriptions).some(arr => arr.length > 0 && arr[0].description);
+                        return (bHasDesc ? 1 : 0) - (aHasDesc ? 1 : 0);
+                    }
+                    case 'desc-no': {
+                        const aHasDesc = a.descriptions && Object.values(a.descriptions).some(arr => arr.length > 0 && arr[0].description);
+                        const bHasDesc = b.descriptions && Object.values(b.descriptions).some(arr => arr.length > 0 && arr[0].description);
+                        return (aHasDesc ? 1 : 0) - (bHasDesc ? 1 : 0);
+                    }
+                    case 'added-asc': {
+                        const aAdded = a.added_to_library ? new Date(a.added_to_library).getTime() : 0;
+                        const bAdded = b.added_to_library ? new Date(b.added_to_library).getTime() : 0;
+                        return aAdded - bAdded;
+                    }
+                    case 'added-desc': {
+                        const aAdded = a.added_to_library ? new Date(a.added_to_library).getTime() : 0;
+                        const bAdded = b.added_to_library ? new Date(b.added_to_library).getTime() : 0;
+                        return bAdded - aAdded;
+                    }
+                    case 'updated-asc': {
+                        const aUpdated = a.updated_on_library ? new Date(a.updated_on_library).getTime() : 0;
+                        const bUpdated = b.updated_on_library ? new Date(b.updated_on_library).getTime() : 0;
+                        return aUpdated - bUpdated;
+                    }
+                    case 'updated-desc': {
+                        const aUpdated = a.updated_on_library ? new Date(a.updated_on_library).getTime() : 0;
+                        const bUpdated = b.updated_on_library ? new Date(b.updated_on_library).getTime() : 0;
+                        return bUpdated - aUpdated;
+                    }
+                    default:
+                        return 0;
+                }
+            });
+        }
+
+        // Reset all filters
+        function resetFilters() {
+            filters = {
+                search: '',
+                yearFrom: null,
+                yearTo: null,
+                orientation: 'all',
+                confirmed: 'all',
+                confidenceMin: 0,
+                confidenceMax: 100,
+                sortBy: 'updated-desc'
+            };
+            
+            document.getElementById('searchInput').value = '';
+            document.getElementById('yearFrom').value = '';
+            document.getElementById('yearTo').value = '';
+            document.getElementById('sortBy').value = 'updated-desc';
+            
+            document.querySelectorAll('.orientation-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.orientation === 'all');
+            });
+            
+            document.querySelectorAll('[data-confirmed]').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.confirmed === 'all');
+            });
+            
+            document.getElementById('confidenceMin').value = 0;
+            document.getElementById('confidenceMax').value = 100;
+            updateConfidenceSlider();
+            
+            filters.confidenceMin = 0;
+            filters.confidenceMax = 100;
+            document.getElementById('confidenceMin').value = 0;
+            document.getElementById('confidenceMax').value = 100;
+            updateConfidenceSlider();
+            
+            applyFilters();
+        }
+
+        // Search functionality
+        document.getElementById('searchInput').addEventListener('input', (e) => {
+            filters.search = e.target.value.toLowerCase();
+            applyFilters();
+        });
+
+        // Year range filters
+        document.getElementById('yearFrom').addEventListener('input', (e) => {
+            filters.yearFrom = e.target.value ? parseInt(e.target.value) : null;
+            applyFilters();
+        });
+
+        document.getElementById('yearTo').addEventListener('input', (e) => {
+            filters.yearTo = e.target.value ? parseInt(e.target.value) : null;
+            applyFilters();
+        });
+        
+        // Sort dropdown
+        document.getElementById('sortBy').addEventListener('change', (e) => {
+            filters.sortBy = e.target.value;
+            applyFilters();
+        });
+
+        // Orientation button filters
+        document.querySelectorAll('[data-orientation]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('[data-orientation]').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                filters.orientation = btn.dataset.orientation;
+                applyFilters();
+            });
+        });
+        
+        // Confirmed status button filters
+        document.querySelectorAll('[data-confirmed]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('[data-confirmed]').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                filters.confirmed = btn.dataset.confirmed;
+                applyFilters();
+            });
+        });
+        
+        // Confidence range slider
+        const confidenceMin = document.getElementById('confidenceMin');
+        const confidenceMax = document.getElementById('confidenceMax');
+        
+        function updateConfidenceSlider() {
+            const min = parseInt(confidenceMin.value);
+            const max = parseInt(confidenceMax.value);
+            
+            // Prevent sliders from crossing
+            if (min > max) {
+                confidenceMin.value = max;
+                filters.confidenceMin = max;
+            } else {
+                filters.confidenceMin = min;
+            }
+            
+            if (max < min) {
+                confidenceMax.value = min;
+                filters.confidenceMax = min;
+            } else {
+                filters.confidenceMax = max;
+            }
+            
+            // Update display values
+            document.getElementById('confidenceMinValue').textContent = filters.confidenceMin + '%';
+            document.getElementById('confidenceMaxValue').textContent = filters.confidenceMax + '%';
+            
+            // Update track visual
+            const track = document.getElementById('sliderTrack');
+            const percentMin = filters.confidenceMin;
+            const percentMax = filters.confidenceMax;
+            track.style.left = percentMin + '%';
+            track.style.width = (percentMax - percentMin) + '%';
+        }
+        
+        confidenceMin.addEventListener('input', () => {
+            updateConfidenceSlider();
+            applyFilters();
+        });
+        
+        confidenceMax.addEventListener('input', () => {
+            updateConfidenceSlider();
+            applyFilters();
+        });
+        
+        // Initialize slider
+        updateConfidenceSlider();
+
+        // Toggle filters visibility
+        function toggleFilters() {
+            const filters = document.getElementById('advancedFilters');
+            const btn = document.querySelector('.collapse-btn');
+            
+            filters.classList.toggle('collapsed');
+            btn.classList.toggle('collapsed');
+        }
+
+        // Initialize
+        loadLibrary();
+    </script>
+</body>
+</html>
